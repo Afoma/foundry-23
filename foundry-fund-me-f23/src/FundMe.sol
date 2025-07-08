@@ -1,61 +1,62 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {PriceConverter} from "./PriceConverter.sol";
 
 contract FundMe {
     // allow users to send $
     // have a minimum $ spent $5
-    uint256 public minimumUsd = 5e18;
+    using PriceConverter for uint256;
+    // this will import the library and attach it to
+    // the desired type (functions here) in our 
+    // PriceConverter to all the uint256 types here
+    // with the using keyword
+    uint256 public constant MINIMUM_USD = 5e18;
     address[] public funders;
     // this is an array of the people/addresses 
     // that are paying into this contract
     mapping (address => uint256) public addressToAmountFunded;
     // here we map the paying people/ addresses to the amount
     // they are paying into the contract
+
+    address public immutable i_owner;
+
+    constructor() {
+        i_owner = msg.sender;
+    }
+
     function fund() public payable{
         // it will receive funds so i make it payable
-        require (getConversionRate(msg.value) > minimumUsd, "didn't send enough eth") ;
-        // getConverrsionRate wraps the msg.value
+        require (msg.value.getConversionRate()) > minimumUsd, "didn't send enough eth") ;
+        // getConversionRate wraps the msg.value
         // to make it in terms of usd
         // msg.value is the amount of eth paid into a contract
         funders.push(msg.sender);
         // here we push those who have paid into 
         // an array or list called funders 
         // that has their addresses
-        addressToAmountFunded[msg.sender] = addressToAmountFunded[msg.sender] + msg.value;
+        addressToAmountFunded[msg.sender] += msg.value;
     }
-    function getData() public view returns (uint256) {
-        // this function will return the price of eth
-        // in terms of usd
-        // we will use the chainlink data feed
-        AggregatorV3Interface dataFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
-        (
-            ,
-            int256 answer,// price of eth in terms of usd
-            ,
-            ,           
-        ) = dataFeed.latestRoundData();
-        return uint256(answer * 1e10); 
-        // the uin256 that wraps the answer is to convert
-        // int256 to uin256. this method is called type casting
-        // 1e10 is used to convert the price to 18 decimals
+    function withdraw() public onlyOwner {
+        for(uint256 funderIndex = 0; funderIndex < funders.length; funderIndex++){
+            address funder = funders[funderIndex];
+            addressToAmountFunded[funder] = 0;
+        }
+        funders = new address[](0);
+        // this will reset the funders array to an empty array
+        // new array that starts at index 0
+        
+        // transfer
+        payable(msg.sender).transfer(amount);
+        // send
+        bool success = payable(msg.sender).send(this).balance;
+        require (success, "No send");
+        // call
+        bool succcess = payable(msg.sender).call{value:address(this).balance}("");
+        require(success, "No call");
     }
-    function getConversionRate(uint256 ethAmount) public view returns(uint256){
-        // this function will convert the eth amount we got 
-        // in the getData function to usd
-        uint256 ethPrice = getData();
-        uint256 ethAmountInUsd = (ethPrice*ethAmount) / 1e18;
-        // in solidity, we multiply before dividing
-        // to avoid precision loss
-        // we divide their result by 1e18 since each of them-
-        // ethPrice and ethAmount are in 18 decimals
-        // and their result will be in 36 decimal places
-        // and this will be too much for our readability
-        return ethAmountInUsd;
-
-    }
-    function getVersion() public view returns(uint256){
-        return AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306).version();
+    modifier onlyOwner() {
+        require(msg.sender == i_owner, "Must be owner");
+        _;
     }
 }
