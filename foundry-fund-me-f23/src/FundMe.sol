@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import {PriceConverter} from "./PriceConverter.sol";
 
+error NotOwner();
+
 contract FundMe {
     // allow users to send $
     // have a minimum $ spent $5
@@ -56,7 +58,14 @@ contract FundMe {
         require(success, "No call");
     }
     modifier onlyOwner() {
-        require(msg.sender == i_owner, "Must be owner");
+        // require(msg.sender == i_owner, "Must be owner");
+        if(msg.sender != i_owner) {revert NotOwner()}
         _;
+    }
+    receive() exteranl payable{
+        fund();
+    }
+    fallback() exteranl payable{
+        fund();
     }
 }
