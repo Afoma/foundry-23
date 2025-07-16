@@ -1,29 +1,28 @@
-// SPDX-License-Idnetifier: MIT
-pragma solidity ^0.8.18;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 library PriceConverter {
-        function getData() internal view returns (uint256) {
+        function getData(AggregatorV3Interface priceFeed) internal view returns (uint256) {
         // this function will return the price of eth
         // in terms of usd
         // we will use the chainlink data feed
-        AggregatorV3Interface dataFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
         (
             ,
             int256 answer,// price of eth in terms of usd
             ,
             ,           
-        ) = dataFeed.latestRoundData();
+        ) = priceFeed.latestRoundData();
         return uint256(answer * 1e10); 
         // the uin256 that wraps the answer is to convert
         // int256 to uin256. this method is called type casting
         // 1e10 is used to convert the price to 18 decimals
     }
-    function getConversionRate(uint256 ethAmount) internal view returns(uint256){
+    function getConversionRate(uint256 ethAmount, AggregatorV3Interface priceFeed) internal view returns(uint256){
         // this function will convert the eth amount we got 
         // in the getData function to usd
-        uint256 ethPrice = getData();
+        uint256 ethPrice = getData(priceFeed);
         uint256 ethAmountInUsd = (ethPrice*ethAmount) / 1e18;
         // in solidity, we multiply before dividing
         // to avoid precision loss
@@ -33,8 +32,5 @@ library PriceConverter {
         // and this will be too much for our readability
         return ethAmountInUsd;
 
-    }
-    function getVersion() internal view returns(uint256){
-        return AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306).version();
     }
 }
