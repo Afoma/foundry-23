@@ -2,15 +2,46 @@
 pragma solidity ^0.8.19;
 
 import {Script} from 'forge-std/Script.sol';
+import {MockV3Aggregator} from '../test/mocks/MockV3Aggregator.sol';
 
-contract HelperConfig{
+contract HelperConfig is Script {
 
-    struct NetworkConfig {}
+    NetworkConfig public activeNetworkConfig;
 
-    function getSepoliaEthConfig() public {
-
+    struct NetworkConfig {
+        address priceFeed; // ETH/USD price feed address
     }
-    function getAnvilEthConfig() public {
 
+    constructor() {
+        if(block.chainid == 11155111){
+            activeNetworkConfig = getSepoliaEthConfig();
+        }elseIf(block.chainid == 1){
+            activeNetworkConfig = getMainnetEthConfig();
+        }else{
+            activeNetworkConfig = getAnvilEthConfig();
+        }
+    }
+
+    function getSepoliaEthConfig() public pure returns(NetworkConfig memory){
+        NetworkConfig memory sepoliaConfig = NetworkConfig({
+            priceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306 // Sepolia ETH/USD price feed address
+        });
+        return sepoliaConfig;
+    }
+    function getMainnetEthConfig() public pure returns(NetworkConfig memory){
+        NetworkConfig memory ethConfig = NetworkConfig({
+            priceFeed: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419 // ETH/USD mainnet price feed address
+        });
+        return ethConfig;
+    }
+    function getAnvilEthConfig() public pure returns(NetworkConfig memory){
+        vm.startBroadcast();
+        MockV3Aggregator mockPriceFeed = MockV3Aggregator(8, 2000e8);
+        vm.stopBroadcast();
+
+        NetworkConfig memory anvilConfig = NetworkConfig({
+            priceFeed: address(mockPriceFeed);
+        });
+        return anvilConfig;
     }
 }
