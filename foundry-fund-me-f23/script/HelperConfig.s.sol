@@ -8,6 +8,9 @@ contract HelperConfig is Script {
 
     NetworkConfig public activeNetworkConfig;
 
+    uint8 public constant DECIMALS = 8;
+    int256 public constant INITIAL_PRICE = 2000e8;
+
     struct NetworkConfig {
         address priceFeed; // ETH/USD price feed address
     }
@@ -15,32 +18,36 @@ contract HelperConfig is Script {
     constructor() {
         if(block.chainid == 11155111){
             activeNetworkConfig = getSepoliaEthConfig();
-        }elseIf(block.chainid == 1){
+        }
+        else if(block.chainid == 1){
             activeNetworkConfig = getMainnetEthConfig();
         }else{
-            activeNetworkConfig = getAnvilEthConfig();
+            activeNetworkConfig = getOrCreateAnvilEthConfig();
         }
     }
 
-    function getSepoliaEthConfig() public pure returns(NetworkConfig memory){
+    function getSepoliaEthConfig() public view returns(NetworkConfig memory){
         NetworkConfig memory sepoliaConfig = NetworkConfig({
             priceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306 // Sepolia ETH/USD price feed address
         });
         return sepoliaConfig;
     }
-    function getMainnetEthConfig() public pure returns(NetworkConfig memory){
+    function getMainnetEthConfig() public view returns(NetworkConfig memory){
         NetworkConfig memory ethConfig = NetworkConfig({
             priceFeed: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419 // ETH/USD mainnet price feed address
         });
         return ethConfig;
     }
-    function getAnvilEthConfig() public pure returns(NetworkConfig memory){
+    function getOrCreateAnvilEthConfig() public returns(NetworkConfig memory){
+        if(activeNetworkConfig.priceFeed != address(0)){
+            return activeNetworkConfig;
+        }
         vm.startBroadcast();
-        MockV3Aggregator mockPriceFeed = MockV3Aggregator(8, 2000e8);
+        MockV3Aggregator mockPriceFeed = new MockV3Aggregator(DECIMALS, INITIAL_PRICE);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
         vm.stopBroadcast();
 
         NetworkConfig memory anvilConfig = NetworkConfig({
-            priceFeed: address(mockPriceFeed);
+            priceFeed: address(mockPriceFeed)
         });
         return anvilConfig;
     }
