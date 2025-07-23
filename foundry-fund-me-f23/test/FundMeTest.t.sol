@@ -6,6 +6,7 @@ import {FundMe} from '../src/FundMe.sol';
 import {DeployFundMe} from "../script/DeployFundMe.s.sol";
 
 contract FundMeTest is Test{
+    uint256 constant GAS_PRICE = 1;
     address user = makeAddr('user');
     uint256 SEND_VALUE= 0.1 ether;
     FundMe public fundMe;
@@ -55,23 +56,42 @@ contract FundMeTest is Test{
         fundMe.withdraw();
     }
     function testWithdrawFromASingleFunder() public{
+        // Arrange
         uint256 startingFundMeBalance = address(fundMe).balance;
         uint256 startingOwnerBalance = fundMe.getOwner().balance;
-        vm.startPrank(fundMe.getOwner());
+        // Act
+        uint256 gasStart = gasleft(); // example: 1000
+        console.log(gasStart);
+        vm.txGasPrice(GAS_PRICE);
+        vm.prank(fundMe.getOwner());  // example: 200
         fundMe.withdraw();
-        vm.stopPrank();
+        uint256 gasEnd = gasleft();   // 800
+        console.log(gasEnd);
+        uint256 gasUsed = (gasStart - gasEnd) * tx.gasprice;
+        console.log("Withdraw consumed: %d gas", gasUsed);
+        // Assert
         uint256 endingFundMeBalance = address(fundMe).balance;
         uint256 endingOwnerBalance = fundMe.getOwner().balance;
         assertEq(endingFundMeBalance, 0);
         assertEq(startingFundMeBalance + startingOwnerBalance, endingOwnerBalance);
     }
-    function testWithdrawFromMultipleFunders() public funded{
-        uint160 numberOfFunders = 10
-        uint160 startingFunderIndex = 1;
-        for(uint160 i = startingFunderIndex; i < numberOfFunders; i++){
-            // we get hoax from stdcheats
-            // prank + deal
-            hoax(address(i), SEND_VALUE);
-        }
+function testWithdrawFromMultipleFunders() public funded {
+    // Arrange
+    uint160 numberOfFunders = 10;
+    uint160 startingFunderIndex = 1;
+    for (uint160 i = startingFunderIndex; i < numberOfFunders + startingFunderIndex; i++) {
+        hoax(address(i), SEND_VALUE);
+        fundMe.fund{value: SEND_VALUE}();
     }
+    uint256 startingFundMeBalance = address(fundMe).balance;
+    uint256 startingOwnerBalance = fundMe.getOwner().balance;
+    // Act
+    vm.startPrank(fundMe.getOwner());
+    fundMe.withdraw();
+    vm.stopPrank();
+    // Assert
+    assert(address(fundMe).balance == 0);
+    assert(startingFundMeBalance + startingOwnerBalance == fundMe.getOwner().balance);
+    assert((numberOfFunders + 1) * SEND_VALUE == fundMe.getOwner().balance - startingOwnerBalance);
+}
 }
