@@ -68,6 +68,26 @@ contract FundMeTest is Test{
         assertEq(endingFundMeBalance, 0);
         assertEq(startingFundMeBalance + startingOwnerBalance, endingOwnerBalance);
     }
+    function testCheaperWithdrawFromMultipleFunders() public funded {
+    // Arrange
+    uint160 numberOfFunders = 10;
+    uint160 startingFunderIndex = 1;
+    for (uint160 i = startingFunderIndex; i < numberOfFunders + startingFunderIndex; i++) {
+        hoax(address(i), SEND_VALUE);
+        fundMe.fund{value: SEND_VALUE}();
+    }
+    uint256 startingFundMeBalance = address(fundMe).balance;
+    uint256 startingOwnerBalance = fundMe.getOwner().balance;
+    // Act
+    vm.startPrank(fundMe.getOwner());
+    fundMe.cheaperWithdraw();
+    vm.stopPrank();
+    // Assert
+    assert(address(fundMe).balance == 0);
+    assert(startingFundMeBalance + startingOwnerBalance == fundMe.getOwner().balance);
+    assert((numberOfFunders + 1) * SEND_VALUE == fundMe.getOwner().balance - startingOwnerBalance);
+}
+
 function testWithdrawFromMultipleFunders() public funded {
     // Arrange
     uint160 numberOfFunders = 10;
@@ -86,5 +106,13 @@ function testWithdrawFromMultipleFunders() public funded {
     assert(address(fundMe).balance == 0);
     assert(startingFundMeBalance + startingOwnerBalance == fundMe.getOwner().balance);
     assert((numberOfFunders + 1) * SEND_VALUE == fundMe.getOwner().balance - startingOwnerBalance);
+}
+function testPrintStorageData() public{
+    for(uint256 i = 0; i < 3; i++){
+        bytes32 value = vm.load(address(fundMe), bytes32(i));
+        console.log("Value at location",i,":");
+        console.logBytes32(value);
+    }
+    console.log("Price Feed Address:", address(fundMe.getPriceFeed()));
 }
 }
